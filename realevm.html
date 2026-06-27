@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EVM Simulator — भारत निर्वाचन आयोग</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Tiro+Devanagari+Hindi:ital@0;1&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
+:root{
+  --saffron:#FF6B00;--saffron2:#FF9A3C;--white:#F8F4EE;
+  --green:#046A38;--green2:#07A050;--navy:#0A1628;
+  --gold:#D4A017;--gold2:#F0C040;--muted:#8A9E8A;
+  --ev:#0f2a0f;--em:#1a3d1a;--el:#2d5a2d;--eb:#3a7a3a;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--navy);color:var(--white);font-family:'Space Grotesk',sans-serif;overflow-x:hidden;}
+
+/* ══ PAGE SYSTEM ══ */
+.page{display:none;min-height:100vh;flex-direction:column;}
+.page.active{display:flex;}
+.page-enter{animation:fadeUp .4s ease both;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+/* ══ TRICOLOR ══ */
+.tri{height:5px;width:100%;background:linear-gradient(90deg,var(--saffron) 33.3%,#F8F4EE 33.3% 66.6%,var(--green) 66.6%);flex-shrink:0;}
+
+/* ══ DB STATUS BAR ══ */
+.db-bar{display:flex;align-items:center;justify-content:center;gap:8px;padding:5px 16px;
+  background:rgba(0,0,0,.35);border-bottom:1px solid rgba(255,255,255,.04);font-size:.64rem;flex-shrink:0;}
+.db-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.db-dot.ok{background:#00e676;box-shadow:0 0 5px #00e676;}
+.db-dot.err{background:#ff1744;box-shadow:0 0 5px #ff1744;}
+.db-dot.loading{background:#ff9100;box-shadow:0 0 5px #ff9100;animation:dbp 1s infinite;}
+@keyframes dbp{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ══ NAV ══ */
+nav{display:flex;align-items:center;justify-content:space-between;padding:14px 50px;
+  background:rgba(10,22,40,.96);backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(255,255,255,.05);flex-shrink:0;position:sticky;top:0;z-index:200;}
+.nav-logo{display:flex;align-items:center;gap:11px;cursor:pointer;}
+.logo-emblem{width:38px;height:38px;border-radius:50%;
+  background:conic-gradient(var(--saffron) 120deg,#F8F4EE 120deg 240deg,var(--green) 240deg);
+  display:flex;align-items:center;justify-content:center;font-size:1rem;box-shadow:0 0 0 2px rgba(255,255,255,.1);}
+.nav-brand-hi{font-family:'Tiro Devanagari Hindi',serif;font-size:.82rem;color:var(--gold2);line-height:1;}
+.nav-brand-en{font-size:.62rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
+.nav-right{display:flex;align-items:center;gap:10px;}
+.nav-trail{display:flex;align-items:center;gap:6px;font-size:.7rem;color:rgba(255,255,255,.35);}
+.nav-trail span{cursor:pointer;transition:color .2s;}
+.nav-trail span:hover{color:var(--gold2);}
+.nav-trail-cur{color:var(--gold2)!important;cursor:default!important;}
+.nav-btn{background:linear-gradient(135deg,var(--saffron),var(--saffron2));color:white;
+  border:none;padding:8px 18px;border-radius:6px;font-family:'Space Grotesk',sans-serif;
+  font-weight:600;font-size:.76rem;cursor:pointer;box-shadow:0 3px 10px rgba(255,107,0,.3);transition:all .2s;}
+.nav-btn:hover{transform:translateY(-1px);box-shadow:0 5px 16px rgba(255,107,0,.4);}
+.nav-btn-ghost{background:rgba(255,255,255,.06);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.12);
+  padding:8px 18px;border-radius:6px;font-family:'Space Grotesk',sans-serif;font-size:.76rem;cursor:pointer;transition:all .2s;}
+.nav-btn-ghost:hover{background:rgba(255,255,255,.1);color:white;}
+
+/* ══ HOME PAGE ══ */
+.hero{flex:1;display:grid;grid-template-columns:1fr 1fr;align-items:center;padding:60px 50px;
+  position:relative;overflow:hidden;}
+.hero::before{content:'☸';position:absolute;right:-80px;top:50%;transform:translateY(-50%);
+  font-size:500px;color:rgba(7,160,80,.04);animation:spin 80s linear infinite;pointer-events:none;}
+@keyframes spin{from{transform:translateY(-50%) rotate(0)}to{transform:translateY(-50%) rotate(360deg)}}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(212,160,23,.12);
+  border:1px solid rgba(212,160,23,.25);border-radius:100px;padding:5px 14px;
+  font-size:.68rem;letter-spacing:2px;text-transform:uppercase;color:var(--gold2);margin-bottom:24px;}
+.eyebrow-dot{width:6px;height:6px;border-radius:50%;background:var(--green2);box-shadow:0 0 5px var(--green2);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+.hero-h1{font-family:'Tiro Devanagari Hindi',serif;font-size:3.4rem;line-height:1.15;margin-bottom:8px;}
+.hero-h1 span{background:linear-gradient(135deg,var(--saffron),var(--gold2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-h2{font-size:.95rem;font-weight:400;color:rgba(255,255,255,.4);letter-spacing:3px;text-transform:uppercase;margin-bottom:20px;}
+.hero-desc{font-size:.95rem;color:rgba(255,255,255,.55);line-height:1.75;max-width:430px;margin-bottom:34px;}
+.hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:38px;}
+.btn-primary{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--saffron),#E85A00);
+  color:white;border:none;padding:13px 28px;border-radius:8px;font-family:'Space Grotesk',sans-serif;
+  font-weight:700;font-size:.88rem;cursor:pointer;box-shadow:0 5px 20px rgba(255,107,0,.4);transition:all .2s;}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(255,107,0,.5);}
+.btn-ghost{display:inline-flex;align-items:center;gap:8px;background:none;color:rgba(255,255,255,.6);
+  border:1px solid rgba(255,255,255,.12);padding:13px 20px;border-radius:8px;
+  font-family:'Space Grotesk',sans-serif;font-size:.82rem;cursor:pointer;transition:all .2s;}
+.btn-ghost:hover{color:white;border-color:rgba(255,255,255,.25);background:rgba(255,255,255,.04);}
+.hero-stats{display:flex;gap:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,.07);}
+.stat-num{font-size:1.5rem;font-weight:700;color:var(--gold2);line-height:1;margin-bottom:3px;}
+.stat-lbl{font-size:.65rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
+
+/* hero EVM */
+.hero-right{display:flex;justify-content:center;align-items:center;position:relative;z-index:2;}
+.evm-visual{position:relative;}
+.evm-glow{position:absolute;inset:-40px;background:radial-gradient(ellipse,rgba(4,106,56,.15) 0%,transparent 70%);pointer-events:none;}
+.evm-hero-body{background:linear-gradient(155deg,#2d5a2d,#1a3d1a,#0f2a0f);border-radius:14px 14px 50px 50px;
+  width:200px;padding:18px 16px 28px;border:1px solid rgba(74,154,74,.4);
+  box-shadow:0 24px 60px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.05);animation:float 5s ease-in-out infinite;}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.evm-lbl{text-align:center;color:rgba(168,213,168,.6);font-size:.52rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;}
+.evm-scr{background:#000;border:2px solid #333;border-radius:4px;padding:7px 9px;margin-bottom:10px;}
+.evm-scr-line{color:#00ff41;font-family:'Courier New',monospace;font-size:.58rem;line-height:1.7;text-shadow:0 0 5px #00ff41;}
+.evm-cursor{display:inline-block;width:6px;height:.65em;background:#00ff41;vertical-align:middle;animation:blink 1s infinite;}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+.evm-mbtns{display:flex;flex-direction:column;gap:5px;margin-top:8px;}
+.evm-mbtn{height:20px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:.48rem;letter-spacing:.8px;text-transform:uppercase;}
+.mb-blue{background:linear-gradient(135deg,#1565c0,#0d47a1);color:#90caf9;}
+.mb-orange{background:linear-gradient(135deg,#e65100,#bf360c);color:#ffccbc;}
+.mb-red{background:linear-gradient(135deg,#b71c1c,#7f0000);color:#ef9a9a;}
+.mini-led-row{display:flex;align-items:center;gap:5px;margin:8px 0;}
+.mini-led{width:6px;height:6px;border-radius:50%;background:#00e676;box-shadow:0 0 5px #00e676;}
+.mini-led-lbl{color:rgba(138,170,138,.6);font-size:.48rem;letter-spacing:1px;}
+.badge{position:absolute;background:rgba(10,22,40,.9);border:1px solid rgba(255,255,255,.1);
+  border-radius:8px;padding:8px 12px;backdrop-filter:blur(8px);white-space:nowrap;}
+.badge-vote{top:20px;right:-58px;animation:float 4s ease-in-out infinite;}
+.badge-secure{bottom:50px;left:-68px;animation:float 6s ease-in-out infinite;animation-delay:-2s;}
+.badge-title{font-size:.58rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px;}
+.badge-val{font-size:.8rem;font-weight:700;color:var(--green2);}
+
+/* ══ SECTIONS ══ */
+.section{padding:80px 50px;}
+.features-section{padding:70px 50px;background:rgba(255,255,255,.02);border-top:1px solid rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.04);}
+.sec-eyebrow{text-align:center;font-size:.65rem;letter-spacing:3px;text-transform:uppercase;color:var(--saffron);margin-bottom:12px;}
+.sec-title{text-align:center;font-family:'Tiro Devanagari Hindi',serif;font-size:2.2rem;margin-bottom:10px;line-height:1.2;}
+.sec-sub{text-align:center;color:rgba(255,255,255,.42);font-size:.88rem;max-width:460px;margin:0 auto 52px;line-height:1.7;}
+.steps-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;max-width:880px;margin:0 auto;position:relative;}
+.steps-grid::before{content:'';position:absolute;top:32px;left:calc(12.5% + 14px);right:calc(12.5% + 14px);height:1px;background:linear-gradient(90deg,var(--saffron),var(--green));z-index:0;}
+.step-card{position:relative;z-index:1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:22px 16px 20px;margin:0 5px;transition:all .3s;}
+.step-card:hover{background:rgba(255,255,255,.05);border-color:rgba(212,160,23,.2);transform:translateY(-3px);}
+.step-icon-wrap{width:50px;height:50px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;margin:0 auto 16px;position:relative;}
+.step-icon-wrap::after{content:attr(data-num);position:absolute;bottom:-5px;right:-5px;width:18px;height:18px;border-radius:50%;background:var(--navy);border:1px solid rgba(255,255,255,.1);font-size:.58rem;font-weight:700;display:flex;align-items:center;justify-content:center;color:var(--gold2);}
+.ic-1{background:rgba(255,107,0,.12)}.ic-2{background:rgba(4,106,56,.12)}.ic-3{background:rgba(212,160,23,.12)}.ic-4{background:rgba(7,160,80,.12)}
+.step-title{font-size:.88rem;font-weight:600;margin-bottom:8px;text-align:center;}
+.step-desc{font-size:.74rem;color:rgba(255,255,255,.42);line-height:1.6;text-align:center;}
+.features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:880px;margin:0 auto;}
+.feature-card{padding:24px;border-radius:12px;border:1px solid rgba(255,255,255,.07);transition:all .3s;position:relative;overflow:hidden;}
+.feature-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;opacity:0;transition:opacity .3s;}
+.feature-card:hover::before{opacity:1;}.feature-card:hover{transform:translateY(-3px);}
+.fc-s::before{background:linear-gradient(90deg,var(--saffron),transparent);}
+.fc-g::before{background:linear-gradient(90deg,var(--green2),transparent);}
+.fc-go::before{background:linear-gradient(90deg,var(--gold),transparent);}
+.feature-icon{font-size:1.6rem;margin-bottom:14px;}
+.feature-title{font-size:.88rem;font-weight:600;margin-bottom:8px;}
+.feature-desc{font-size:.74rem;color:rgba(255,255,255,.42);line-height:1.6;}
+.cta-section{padding:80px 50px;text-align:center;position:relative;overflow:hidden;}
+.cta-section::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(255,107,0,.07) 0%,transparent 65%);pointer-events:none;}
+.cta-title{font-family:'Tiro Devanagari Hindi',serif;font-size:2.6rem;margin-bottom:14px;line-height:1.2;}
+.cta-title span{background:linear-gradient(135deg,var(--saffron),var(--gold2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.cta-desc{color:rgba(255,255,255,.48);font-size:.9rem;max-width:400px;margin:0 auto 36px;line-height:1.7;}
+.footer{padding:24px 50px;border-top:1px solid rgba(255,255,255,.05);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;flex-shrink:0;}
+.footer-left{color:var(--muted);font-size:.68rem;}
+.footer-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(4,106,56,.12);border:1px solid rgba(4,106,56,.2);border-radius:100px;padding:4px 10px;font-size:.62rem;color:var(--green2);letter-spacing:1px;margin-right:6px;}
+
+/* ══ HISTORY PAGE ══ */
+.sessions-section{padding:60px 50px;flex:1;}
+.sessions-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;max-width:960px;margin:0 auto;}
+.session-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:18px;transition:all .3s;cursor:pointer;}
+.session-card:hover{border-color:rgba(212,160,23,.25);background:rgba(255,255,255,.05);transform:translateY(-2px);}
+.session-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.session-id{font-size:.62rem;color:var(--muted);font-family:'Courier New',monospace;}
+.session-date{font-size:.62rem;color:rgba(255,255,255,.3);margin-bottom:8px;}
+.session-voters{font-size:.78rem;color:var(--white);font-weight:600;margin-bottom:6px;}
+.session-winner{font-size:.72rem;color:var(--green2);margin-bottom:4px;}
+.session-total{font-size:.65rem;color:var(--muted);}
+.session-status{display:inline-flex;align-items:center;gap:5px;font-size:.6rem;letter-spacing:1px;text-transform:uppercase;padding:3px 8px;border-radius:100px;margin-top:8px;}
+.status-done{background:rgba(0,230,118,.1);color:#00e676;border:1px solid rgba(0,230,118,.2);}
+.status-act{background:rgba(255,145,0,.1);color:#ff9100;border:1px solid rgba(255,145,0,.2);}
+.no-sessions{text-align:center;color:rgba(255,255,255,.25);font-size:.85rem;padding:40px;grid-column:1/-1;}
+.btn-danger{background:linear-gradient(135deg,#c62828,#b71c1c);color:white;border:none;padding:5px 12px;border-radius:5px;font-family:'Space Grotesk',sans-serif;font-size:.68rem;cursor:pointer;transition:all .2s;}
+.btn-danger:hover{filter:brightness(1.2);}
+.btn-sm{background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.1);padding:6px 14px;border-radius:6px;font-family:'Space Grotesk',sans-serif;font-size:.72rem;cursor:pointer;transition:all .2s;}
+.btn-sm:hover{background:rgba(255,255,255,.13);}
+
+/* ══ SETUP PAGE ══ */
+.setup-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:36px 20px;}
+.setup-card{background:linear-gradient(160deg,var(--el),var(--em),var(--ev));border:1px solid var(--eb);border-radius:18px;padding:30px 32px;width:100%;max-width:510px;box-shadow:0 8px 40px rgba(0,0,0,.6);}
+.setup-top{display:flex;align-items:center;gap:12px;margin-bottom:22px;}
+.setup-icon{font-size:1.8rem;}
+.setup-title{font-family:'Tiro Devanagari Hindi',serif;font-size:1.3rem;color:var(--gold2);}
+.setup-sub{font-size:.68rem;color:var(--muted);letter-spacing:1px;}
+.vcbar{display:flex;justify-content:space-between;margin-bottom:12px;}
+.vcl{color:#a8d5a8;font-size:.72rem;}.vcn{color:#00e676;font-family:'Courier New',monospace;font-size:.78rem;}
+.voter-list{display:flex;flex-direction:column;gap:7px;margin-bottom:16px;}
+.voter-row{display:flex;align-items:center;gap:8px;}
+.voter-num-lbl{color:#4a8a4a;font-size:.68rem;font-family:'Courier New',monospace;min-width:22px;text-align:right;}
+.voter-inp{flex:1;background:rgba(0,0,0,.4);border:1px solid #2a5a2a;border-radius:6px;padding:8px 11px;color:#e0e0e0;font-family:'Space Grotesk',sans-serif;font-size:.82rem;outline:none;transition:border-color .2s;}
+.voter-inp:focus{border-color:#00e676;box-shadow:0 0 5px rgba(0,230,118,.2);}
+.voter-inp::placeholder{color:#3a5a3a;}
+.voter-inp.filled{border-color:#1a7a4a;color:#c8e6c9;}
+.vdot{width:7px;height:7px;border-radius:50%;background:#2a4a2a;flex-shrink:0;transition:all .3s;}
+.vdot.filled{background:#00e676;box-shadow:0 0 4px #00e676;}
+.setup-err{color:#ef9a9a;font-size:.7rem;text-align:center;min-height:16px;margin-bottom:8px;}
+.btn-start{width:100%;background:linear-gradient(135deg,#1b5e20,#2e7d32);color:#a5d6a7;border:1px solid #4caf50;border-radius:8px;padding:12px;font-family:'Space Grotesk',sans-serif;font-size:.88rem;font-weight:700;letter-spacing:2px;cursor:pointer;text-transform:uppercase;transition:all .2s;box-shadow:0 3px 10px rgba(46,125,50,.3);}
+.btn-start:hover:not(:disabled){background:linear-gradient(135deg,#2e7d32,#388e3c);transform:translateY(-1px);}
+.btn-start:disabled{opacity:.35;cursor:not-allowed;transform:none;}
+
+/* ══ VOTING PAGE ══ */
+.voting-wrap{flex:1;display:flex;flex-direction:column;align-items:center;padding:20px 16px 36px;gap:18px;}
+.queue-panel{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:14px 18px;width:100%;max-width:640px;}
+.queue-title{color:var(--gold2);font-size:.66rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;}
+.queue-grid{display:flex;flex-wrap:wrap;gap:6px;}
+.chip{padding:4px 11px;border-radius:20px;font-size:.7rem;font-weight:600;border:1px solid transparent;transition:all .3s;}
+.chip-wait{background:rgba(255,255,255,.04);color:#5a8a5a;border-color:#2a4a2a;}
+.chip-cur{background:rgba(0,230,118,.12);color:#00e676;border-color:#00e676;animation:glow 1.5s infinite;}
+@keyframes glow{0%,100%{box-shadow:0 0 7px rgba(0,230,118,.2)}50%{box-shadow:0 0 14px rgba(0,230,118,.4)}}
+.chip-done{background:rgba(255,255,255,.02);color:#2a4a2a;border-color:#1a2a1a;text-decoration:line-through;}
+.evm-row{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;justify-content:center;}
+/* Control Unit */
+.cu{background:linear-gradient(160deg,var(--el),var(--em),var(--ev));border-radius:14px 14px 44px 44px;padding:18px 18px 26px;width:205px;border:1px solid var(--eb);box-shadow:0 8px 32px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05);}
+.cu-lbl{text-align:center;color:#a8d5a8;font-size:.58rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;}
+.display{background:#000;border:2px solid #333;border-radius:5px;padding:8px 10px;margin-bottom:11px;min-height:56px;position:relative;overflow:hidden;}
+.display::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,255,0,.03) 0%,transparent 100%);}
+.display-txt{color:#00ff41;font-size:.68rem;font-family:'Courier New',monospace;line-height:1.7;text-shadow:0 0 7px #00ff41;}
+.blink-cur{animation:blink 1s infinite;}
+.led-row{display:flex;align-items:center;gap:6px;margin-bottom:10px;}
+.led{width:9px;height:9px;border-radius:50%;background:#333;transition:all .3s;}
+.led.green{background:#00e676;box-shadow:0 0 6px #00e676;}
+.led.red{background:#ff1744;box-shadow:0 0 6px #ff1744;}
+.led.orange{background:#ff9100;box-shadow:0 0 6px #ff9100;}
+.led-lbl{color:#8aaa8a;font-size:.6rem;}
+.cu-btns{display:flex;flex-direction:column;gap:6px;}
+.cu-btn{border:none;border-radius:5px;padding:7px 10px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:.72rem;letter-spacing:.5px;cursor:pointer;transition:all .15s;text-transform:uppercase;}
+.cu-btn:hover{transform:translateY(-1px);filter:brightness(1.1);}
+.cu-btn:active{transform:translateY(1px);}
+.cb-res{background:linear-gradient(135deg,#e65100,#bf360c);color:white;}
+.cb-cls{background:linear-gradient(135deg,#c62828,#b71c1c);color:white;}
+.cb-rst{background:linear-gradient(135deg,#37474f,#263238);color:#b0bec5;font-size:.66rem;margin-top:2px;}
+.result-panel{background:#0a0a0a;border:1px solid #1a3a1a;border-radius:7px;padding:10px;margin-top:12px;display:none;}
+.result-panel.show{display:block;}
+.result-title-lbl{color:var(--gold2);font-size:.62rem;letter-spacing:2px;text-align:center;margin-bottom:9px;text-transform:uppercase;}
+.res-row{display:flex;align-items:center;padding:3px 0;border-bottom:1px solid #111;}
+.res-row:last-child{border:none;}
+.res-name{color:#c8e6c9;font-size:.65rem;flex:0 0 auto;max-width:70px;}
+.res-count{color:#00e676;font-size:.76rem;font-weight:700;font-family:'Courier New',monospace;}
+.res-bar-wrap{flex:1;margin:0 5px;height:4px;background:#1a1a1a;border-radius:2px;overflow:hidden;}
+.res-bar{height:100%;background:linear-gradient(90deg,#00c853,#00e676);border-radius:2px;transition:width .6s;}
+.cu-serial{text-align:center;color:#4a7a4a;font-size:.56rem;margin-top:10px;font-family:'Courier New',monospace;}
+/* Cable */
+.cable{width:32px;height:5px;background:linear-gradient(90deg,#3a7a3a,#4a9a4a,#3a7a3a);border-radius:3px;align-self:center;margin-top:-36px;}
+/* Balloting Unit */
+.bu{background:linear-gradient(160deg,var(--el),var(--em),var(--ev));border-radius:14px 14px 44px 44px;padding:18px 18px 26px;width:262px;border:1px solid var(--eb);box-shadow:0 8px 32px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05);}
+.bu-lbl{text-align:center;color:#a8d5a8;font-size:.58rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;}
+.election-title{text-align:center;color:var(--gold2);font-size:.8rem;font-weight:700;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--eb);}
+.cv-box{background:rgba(0,230,118,.07);border:1px solid #1a5a3a;border-radius:6px;padding:6px 10px;margin-bottom:10px;text-align:center;transition:border-color .4s;}
+.cv-lbl{color:#5aaa7a;font-size:.58rem;letter-spacing:1px;}
+.cv-name{color:#00e676;font-size:.86rem;font-weight:700;}
+.cv-num{color:#4aaa6a;font-size:.62rem;}
+.cand-list{display:flex;flex-direction:column;gap:5px;}
+.cand-row{display:flex;align-items:center;background:rgba(0,0,0,.3);border-radius:4px;overflow:hidden;border:1px solid #2a5a2a;transition:border-color .2s;}
+.cand-row.voted{border-color:#00e676;background:rgba(0,230,118,.08);}
+.cand-row.nota{background:rgba(40,0,0,.3);border-color:#5a2a2a;}
+.s-no{background:#1a3a1a;color:#8aaa8a;font-size:.66rem;padding:9px 7px;font-family:'Courier New',monospace;min-width:24px;text-align:center;border-right:1px solid #2a5a2a;}
+.sym-box{width:32px;height:36px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;background:rgba(0,0,0,.2);border-right:1px solid #2a5a2a;flex-shrink:0;}
+.cand-info{flex:1;padding:3px 7px;}
+.cand-name{color:#e0e0e0;font-size:.72rem;font-weight:600;line-height:1.2;}
+.cand-party{color:#8aaa8a;font-size:.58rem;line-height:1.2;}
+.vote-btn{background:linear-gradient(135deg,#1565c0,#0d47a1);border:none;color:white;width:34px;height:36px;cursor:pointer;font-size:.52rem;font-weight:700;transition:all .15s;flex-shrink:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;font-family:'Space Grotesk',sans-serif;}
+.vote-btn:hover:not(:disabled){filter:brightness(1.25);}
+.vote-btn:active:not(:disabled){transform:scale(.93);}
+.vote-btn:disabled{background:#222;cursor:not-allowed;opacity:.3;}
+.vbdot{width:6px;height:6px;border-radius:50%;background:#64b5f6;}
+.nota .vote-btn{background:linear-gradient(135deg,#6a1515,#4a0f0f);}
+
+/* ══ VOTED OVERLAY ══ */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:14px;}
+.overlay.show{display:flex;}
+.beep-circle{width:76px;height:76px;border-radius:50%;background:#00e676;display:flex;align-items:center;justify-content:center;font-size:2.2rem;animation:popIn .5s ease-out;}
+@keyframes popIn{0%{transform:scale(0);opacity:0}70%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
+.ov-voted{color:#00e676;font-size:1.3rem;font-weight:700;letter-spacing:2px;}
+.ov-vname{color:var(--gold2);font-size:.95rem;font-weight:700;}
+.ov-cname{color:#8aaa8a;font-size:.8rem;}
+.ov-save{color:var(--green2);font-size:.68rem;margin-top:4px;}
+
+/* ══ TOAST ══ */
+.toast{position:fixed;bottom:20px;right:20px;background:rgba(5,15,30,.97);border:1px solid rgba(255,255,255,.1);border-left-width:3px;border-radius:10px;padding:12px 16px;font-size:.72rem;display:flex;align-items:center;gap:8px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.5);transition:all .3s;max-width:300px;}
+.toast.hide{opacity:0;transform:translateY(10px);}
+.toast-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+
+/* ══ MODAL ══ */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;z-index:500;padding:20px;}
+.modal{background:linear-gradient(160deg,#1a2840,#0f1e30);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:28px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;}
+.modal-hd{font-family:'Tiro Devanagari Hindi',serif;font-size:1.2rem;color:var(--gold2);margin-bottom:5px;}
+.modal-sub{font-size:.68rem;color:var(--muted);margin-bottom:18px;font-family:'Courier New',monospace;}
+.modal-close-btn{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:white;border-radius:6px;padding:7px 16px;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:.76rem;margin-top:14px;}
+.modal-close-btn:hover{background:rgba(255,255,255,.12);}
+.tag{display:inline-block;background:rgba(255,255,255,.06);border-radius:20px;padding:3px 10px;font-size:.68rem;margin:2px;}
+
+/* ══ RESPONSIVE ══ */
+@media(max-width:860px){
+  nav{padding:12px 18px;}
+  .hero{grid-template-columns:1fr;padding:50px 20px;text-align:center;}
+  .hero::before{display:none;}
+  .hero-desc{margin:0 auto 32px;}
+  .hero-actions{justify-content:center;}
+  .hero-stats{justify-content:center;}
+  .hero-right{display:none;}
+  .hero-h1{font-size:2.4rem;}
+  .section,.features-section,.cta-section,.sessions-section{padding:50px 18px;}
+  .steps-grid{grid-template-columns:1fr 1fr;gap:10px;}
+  .steps-grid::before{display:none;}
+  .features-grid{grid-template-columns:1fr;}
+  .footer{padding:18px;flex-direction:column;text-align:center;}
+  .evm-row{flex-direction:column;align-items:center;gap:0;}
+  .cable{width:5px;height:22px;margin:0;}
+  .cu,.bu{width:295px;}
+  .setup-card{padding:22px 18px;}
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════
+     DB STATUS BAR (always visible)
+════════════════════════════════════════ -->
+<div class="db-bar" id="dbBar">
+  <div class="db-dot loading" id="dbDot"></div>
+  <span id="dbLabel" style="color:var(--muted)">Database connecting...</span>
+</div>
+
+<!-- ════════════════════════════════════════
+     PAGE 1 — HOME
+════════════════════════════════════════ -->
+<div id="pageHome" class="page active">
+  <div class="tri"></div>
+  <nav>
+    <div class="nav-logo" onclick="goHome()">
+      <div class="logo-emblem">☸</div>
+      <div><div class="nav-brand-hi">ई-मतदान सिम्युलेटर</div><div class="nav-brand-en">EVM Simulator — ECI</div></div>
+    </div>
+    <div class="nav-right">
+      <button class="nav-btn-ghost" onclick="goHistory()">📁 Sessions (<span id="homeSessionCount">0</span>)</button>
+      <button class="nav-btn" onclick="goSetup()">🗳️ Voting शुरू करें</button>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div style="position:relative;z-index:2;padding:70px 0;">
+      <div class="hero-eyebrow"><span class="eyebrow-dot"></span>Live Simulator · Database Connected · शैक्षिक</div>
+      <h1 class="hero-h1"><span>मतदान</span> का<br>अनुभव करें</h1>
+      <p class="hero-h2">Electronic Voting Machine</p>
+      <p class="hero-desc">EVM simulator — voters register करें, vote डालें, results देखें। हर session <strong style="color:var(--green2)">IndexedDB database</strong> में automatically save होता है।</p>
+      <div class="hero-actions">
+        <button class="btn-primary" onclick="goSetup()">🗳️ Voting शुरू करें →</button>
+        <button class="btn-ghost" onclick="goHistory()">📁 Past Sessions</button>
+      </div>
+      <div class="hero-stats">
+        <div><div class="stat-num" id="statSessions">0</div><div class="stat-lbl">Sessions Saved</div></div>
+        <div><div class="stat-num" id="statVotes">0</div><div class="stat-lbl">Total Votes Cast</div></div>
+        <div><div class="stat-num">10</div><div class="stat-lbl">Max Voters/Session</div></div>
+      </div>
+    </div>
+    <div class="hero-right">
+      <div class="evm-visual">
+        <div class="evm-glow"></div>
+        <div class="badge badge-vote"><div class="badge-title">Sessions Saved</div><div class="badge-val" id="badgeSessions">0 💾</div></div>
+        <div class="evm-hero-body">
+          <div class="evm-lbl">Control Unit · ECI</div>
+          <div class="evm-scr">
+            <div class="evm-scr-line">DB: CONNECTED</div>
+            <div class="evm-scr-line">SESSIONS: <span id="heroSessCount">0</span></div>
+            <div class="evm-scr-line">STATUS: READY<span class="evm-cursor"></span></div>
+          </div>
+          <div class="mini-led-row"><div class="mini-led"></div><div class="mini-led-lbl">DATABASE ACTIVE</div></div>
+          <div class="evm-mbtns">
+            <div class="evm-mbtn mb-blue">▶ Ballot Open</div>
+            <div class="evm-mbtn mb-orange">📊 Result</div>
+            <div class="evm-mbtn mb-red">■ Close</div>
+          </div>
+        </div>
+        <div class="badge badge-secure"><div class="badge-title">Storage</div><div class="badge-val" style="color:var(--gold2)">IndexedDB 💾</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <p class="sec-eyebrow">Process · प्रक्रिया</p>
+    <h2 class="sec-title">कैसे काम करता है?</h2>
+    <p class="sec-sub">चार आसान चरणों में — registration से database save तक।</p>
+    <div class="steps-grid">
+      <div class="step-card"><div class="step-icon-wrap ic-1" data-num="1">📋</div><div class="step-title">Voter Registration</div><div class="step-desc">Voting से पहले 1–10 voters के नाम register करें।</div></div>
+      <div class="step-card"><div class="step-icon-wrap ic-2" data-num="2">🗳️</div><div class="step-title">Vote Casting</div><div class="step-desc">हर voter एक-एक करके vote डालता है — one person, one vote।</div></div>
+      <div class="step-card"><div class="step-icon-wrap ic-3" data-num="3">💾</div><div class="step-title">Auto Database Save</div><div class="step-desc">हर vote के बाद IndexedDB में automatically data save होता है।</div></div>
+      <div class="step-card"><div class="step-icon-wrap ic-4" data-num="4">📊</div><div class="step-title">Session History</div><div class="step-desc">सभी past sessions permanently stored — कभी भी देखें।</div></div>
+    </div>
+  </section>
+
+  <section class="features-section">
+    <p class="sec-eyebrow">Features · विशेषताएं</p>
+    <h2 class="sec-title">क्या-क्या मिलेगा?</h2>
+    <p class="sec-sub">Real EVM + Persistent Database — सब एक ही file में।</p>
+    <div class="features-grid">
+      <div class="feature-card fc-s"><div class="feature-icon">💾</div><div class="feature-title">IndexedDB Database</div><div class="feature-desc">Browser की built-in IndexedDB में data permanently store होता है — page refresh के बाद भी data safe रहता है।</div></div>
+      <div class="feature-card fc-g"><div class="feature-icon">⚡</div><div class="feature-title">Auto-Save Every Vote</div><div class="feature-desc">हर vote cast होने के बाद तुरंत database update होता है — कोई data loss नहीं।</div></div>
+      <div class="feature-card fc-go"><div class="feature-icon">📁</div><div class="feature-title">Session History</div><div class="feature-desc">सभी past voting sessions save हैं। Click करके details देखें, delete करें।</div></div>
+      <div class="feature-card fc-s"><div class="feature-icon">👥</div><div class="feature-title">Voter Queue</div><div class="feature-desc">Registered voters की live queue — active, waiting, voted सब clearly दिखता है।</div></div>
+      <div class="feature-card fc-g"><div class="feature-icon">❌</div><div class="feature-title">NOTA Option</div><div class="feature-desc">None of the Above — real Indian EVM की तरह NOTA भी available है।</div></div>
+      <div class="feature-card fc-go"><div class="feature-icon">🔊</div><div class="feature-title">Audio + Animations</div><div class="feature-desc">Vote confirm पर beep sound और smooth page transitions।</div></div>
+    </div>
+  </section>
+
+  <section class="cta-section">
+    <h2 class="cta-title">तैयार हैं <span>मतदान</span> के लिए?</h2>
+    <p class="cta-desc">Voter names register करें और पूरी voting process experience करें — data automatically database में save होगा।</p>
+    <button class="btn-primary" style="padding:16px 40px;font-size:1rem;" onclick="goSetup()">🗳️ Voting Machine खोलें →</button>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-left">☸ EVM Simulator · भारत निर्वाचन आयोग · शैक्षिक प्रदर्शन मात्र</div>
+    <div><span class="footer-badge">🟠 सत्यमेव जयते</span><span class="footer-badge">💾 IndexedDB Active</span></div>
+  </footer>
+  <div class="tri"></div>
+</div>
+
+<!-- ════════════════════════════════════════
+     PAGE 2 — HISTORY
+════════════════════════════════════════ -->
+<div id="pageHistory" class="page">
+  <div class="tri"></div>
+  <nav>
+    <div class="nav-logo" onclick="goHome()">
+      <div class="logo-emblem">☸</div>
+      <div><div class="nav-brand-hi">ई-मतदान सिम्युलेटर</div><div class="nav-brand-en">EVM Simulator — ECI</div></div>
+    </div>
+    <div class="nav-trail">
+      <span onclick="goHome()">Home</span><span style="opacity:.4">›</span>
+      <span class="nav-trail-cur">Session History</span>
+    </div>
+  </nav>
+  <div class="sessions-section">
+    <p class="sec-eyebrow">IndexedDB · डेटाबेस</p>
+    <h2 class="sec-title">Session History</h2>
+    <p class="sec-sub">सभी saved voting sessions। किसी भी session पर click करें details देखने के लिए।</p>
+    <div style="text-align:center;margin-bottom:20px;display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
+      <button class="btn-sm" onclick="loadHistory()">🔄 Refresh</button>
+      <button class="btn-danger" onclick="clearAllSessions()">🗑️ Clear All</button>
+    </div>
+    <div class="sessions-grid" id="sessionsGrid">
+      <div class="no-sessions">⏳ Loading sessions...</div>
+    </div>
+  </div>
+  <div class="tri"></div>
+</div>
+
+<!-- ════════════════════════════════════════
+     PAGE 3 — SETUP
+════════════════════════════════════════ -->
+<div id="pageSetup" class="page">
+  <div class="tri"></div>
+  <nav>
+    <div class="nav-logo" onclick="goHome()">
+      <div class="logo-emblem">☸</div>
+      <div><div class="nav-brand-hi">ई-मतदान सिम्युलेटर</div><div class="nav-brand-en">EVM Simulator — ECI</div></div>
+    </div>
+    <div class="nav-trail">
+      <span onclick="goHome()">Home</span><span style="opacity:.4">›</span>
+      <span class="nav-trail-cur">Voter Registration</span>
+    </div>
+  </nav>
+  <div class="setup-wrap">
+    <div class="setup-card">
+      <div class="setup-top">
+        <div class="setup-icon">📋</div>
+        <div>
+          <div class="setup-title">Voter Registration</div>
+          <div class="setup-sub">मतदाताओं के नाम दर्ज करें (अधिकतम 10)</div>
+        </div>
+      </div>
+      <div class="vcbar">
+        <span class="vcl">Voters Registered:</span>
+        <span class="vcn" id="regCount">0 / 10</span>
+      </div>
+      <div class="voter-list" id="voterInputList"></div>
+      <div class="setup-err" id="setupErr"></div>
+      <button class="btn-start" id="btnStart" onclick="startVoting()" disabled>▶ Start Voting Session</button>
+    </div>
+  </div>
+  <div class="tri"></div>
+</div>
+
+<!-- ════════════════════════════════════════
+     PAGE 4 — VOTING MACHINE
+════════════════════════════════════════ -->
+<div id="pageVoting" class="page">
+  <div class="tri"></div>
+  <nav>
+    <div class="nav-logo" onclick="goHome()">
+      <div class="logo-emblem">☸</div>
+      <div><div class="nav-brand-hi">ई-मतदान सिम्युलेटर</div><div class="nav-brand-en">EVM Simulator — ECI</div></div>
+    </div>
+    <div class="nav-trail">
+      <span onclick="goHome()">Home</span><span style="opacity:.4">›</span>
+      <span onclick="goSetup()">Registration</span><span style="opacity:.4">›</span>
+      <span class="nav-trail-cur">Voting</span>
+    </div>
+  </nav>
+
+  <div class="voting-wrap">
+    <div class="queue-panel">
+      <div class="queue-title">🗒️ Voter Queue — मतदाता सूची</div>
+      <div class="queue-grid" id="queueGrid"></div>
+    </div>
+
+    <div class="evm-row">
+      <!-- Control Unit -->
+      <div class="cu">
+        <div class="cu-lbl">Control Unit (CU)</div>
+        <div class="display">
+          <div class="display-txt" id="displayTxt">READY<br><span class="blink-cur">_</span></div>
+        </div>
+        <div class="led-row">
+          <div class="led green" id="ledDot"></div>
+          <div class="led-lbl" id="ledLbl">System Ready</div>
+        </div>
+        <div class="cu-btns">
+          <button class="cu-btn cb-res" onclick="doShowResult()">📊 Result</button>
+          <button class="cu-btn cb-cls" onclick="doCloseVoting()">■ Close Voting</button>
+          <button class="cu-btn cb-rst" onclick="doReset()">↺ New Session</button>
+        </div>
+        <div class="result-panel" id="resultPanel">
+          <div class="result-title-lbl">— VOTE COUNT —</div>
+          <div id="resultRows"></div>
+        </div>
+        <div class="cu-serial">S/N: ECI-2024-BU-00714</div>
+      </div>
+
+      <!-- Cable -->
+      <div class="cable"></div>
+
+      <!-- Balloting Unit -->
+      <div class="bu">
+        <div class="bu-lbl">Balloting Unit (BU)</div>
+        <div class="election-title">🏛️ लोक सभा चुनाव 2024<br><small style="font-size:.62rem;color:#8aaa8a">Constituency: 42 — Delhi Central</small></div>
+        <div class="cv-box" id="cvBox">
+          <div class="cv-lbl">CURRENT VOTER — वर्तमान मतदाता</div>
+          <div class="cv-name" id="cvName">—</div>
+          <div class="cv-num" id="cvNum"></div>
+        </div>
+        <div class="cand-list" id="candList"></div>
+      </div>
+    </div>
+  </div>
+  <div class="tri"></div>
+</div>
+
+<!-- VOTED OVERLAY -->
+<div class="overlay" id="votedOverlay">
+  <div class="beep-circle">✓</div>
+  <div class="ov-voted">वोट दर्ज हो गया!</div>
+  <div class="ov-vname" id="ovVoter"></div>
+  <div class="ov-cname" id="ovCand"></div>
+  <div class="ov-save">💾 Database में save हो रहा है...</div>
+</div>
+
+<!-- SESSION DETAIL MODAL -->
+<div class="modal-bg" id="modalBg" style="display:none;" onclick="closeModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-hd">📊 Session Details</div>
+    <div class="modal-sub" id="modalSub"></div>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:.72rem;color:var(--muted);margin-bottom:8px;letter-spacing:1px;text-transform:uppercase;">VOTERS</div>
+      <div id="modalVoters"></div>
+    </div>
+    <div>
+      <div style="font-size:.72rem;color:var(--muted);margin-bottom:8px;letter-spacing:1px;text-transform:uppercase;">VOTE COUNT</div>
+      <div id="modalResults"></div>
+    </div>
+    <div id="modalWinner" style="margin-top:10px;font-size:.75rem;color:var(--green2);"></div>
+    <br>
+    <button class="modal-close-btn" onclick="closeModal()">✕ Close</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast hide" id="toast">
+  <div class="toast-dot" id="toastDot"></div>
+  <span id="toastMsg"></span>
+</div>
+
+<!-- ════════════════════════════════════════
+     SCRIPT
+════════════════════════════════════════ -->
+<script>
+/* ══ CANDIDATES ══ */
+const CANDS = [
+  {name:"राज कुमार शर्मा", nameEn:"Raj Kumar Sharma",  party:"भारतीय जनता पार्टी",        sym:"🪷"},
+  {name:"अनीता देवी",      nameEn:"Anita Devi",         party:"भारतीय राष्ट्रीय कांग्रेस",  sym:"✋"},
+  {name:"मोहन लाल यादव",  nameEn:"Mohan Lal Yadav",   party:"समाजवादी पार्टी",            sym:"🚲"},
+  {name:"सुनीता पटेल",    nameEn:"Sunita Patel",       party:"बहुजन समाज पार्टी",         sym:"🐘"},
+  {name:"अरविंद सिंह",    nameEn:"Arvind Singh",       party:"आम आदमी पार्टी",            sym:"🧹"},
+  {name:"NOTA",            nameEn:"None of the Above", party:"उपरोक्त में से कोई नहीं",    sym:"❌"},
+];
+
+const MAX_VOTERS = 10;
+const DB_NAME    = "EVMSimulator";
+const DB_VERSION = 1;
+const STORE_NAME = "sessions";
+
+/* ══ STATE ══ */
+let db = null;
+let voters = [], currentIdx = 0;
+let votes = new Array(CANDS.length).fill(0);
+let totalVotes = 0, vState = "open", hasVoted = false;
+let activeSessionId = null;
+
+/* ══════════════════════════════════════
+   DATABASE — IndexedDB
+══════════════════════════════════════ */
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains(STORE_NAME)) {
+        const store = d.createObjectStore(STORE_NAME, {keyPath:"id"});
+        store.createIndex("date", "timestamp", {unique:false});
+      }
+    };
+    req.onsuccess = e => { db = e.target.result; resolve(db); };
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+function dbSaveSession(session) {
+  return new Promise((resolve, reject) => {
+    if (!db) { reject("DB not ready"); return; }
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    tx.objectStore(STORE_NAME).put(session);
+    tx.oncomplete = () => resolve();
+    tx.onerror    = e => reject(e.target.error);
+  });
+}
+
+function dbGetAllSessions() {
+  return new Promise((resolve, reject) => {
+    if (!db) { resolve([]); return; }
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const req = tx.objectStore(STORE_NAME).index("date").getAll();
+    req.onsuccess = e => resolve([...e.target.result].reverse()); // newest first
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+function dbDeleteSession(id) {
+  return new Promise((resolve, reject) => {
+    if (!db) { reject("DB not ready"); return; }
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    tx.objectStore(STORE_NAME).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror    = e => reject(e.target.error);
+  });
+}
+
+function dbClearAll() {
+  return new Promise((resolve, reject) => {
+    if (!db) { reject("DB not ready"); return; }
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    tx.objectStore(STORE_NAME).clear();
+    tx.oncomplete = () => resolve();
+    tx.onerror    = e => reject(e.target.error);
+  });
+}
+
+/* ══ INIT DB ══ */
+async function initDB() {
+  setDbStatus("loading", "Database connecting...");
+  try {
+    await openDB();
+    const sessions = await dbGetAllSessions();
+    const totalV = sessions.reduce((a,s) => a + (s.totalVotes||0), 0);
+    setDbStatus("ok", `Database connected · ${sessions.length} sessions · ${totalV} total votes`);
+    updateHomeStats(sessions);
+    showToast("💾 Database connected — data loaded!", "#00e676");
+  } catch(err) {
+    setDbStatus("err", "Database error — data may not save");
+    showToast("⚠️ Database error: " + err, "#ff1744");
+  }
+}
+
+function setDbStatus(type, msg) {
+  const dot = document.getElementById("dbDot");
+  dot.className = "db-dot " + type;
+  document.getElementById("dbLabel").textContent = msg;
+}
+
+async function updateHomeStats(sessions) {
+  if (!sessions) sessions = await dbGetAllSessions().catch(()=>[]);
+  const totalV = sessions.reduce((a,s) => a + (s.totalVotes||0), 0);
+  document.getElementById("statSessions").textContent    = sessions.length;
+  document.getElementById("statVotes").textContent       = totalV;
+  document.getElementById("homeSessionCount").textContent= sessions.length;
+  document.getElementById("badgeSessions").textContent   = sessions.length + " 💾";
+  document.getElementById("heroSessCount").textContent   = sessions.length;
+}
+
+/* ══ TOAST ══ */
+let toastTimer = null;
+function showToast(msg, color="#00e676") {
+  const t = document.getElementById("toast");
+  document.getElementById("toastMsg").textContent = msg;
+  document.getElementById("toastDot").style.background = color;
+  t.style.borderLeftColor = color;
+  t.classList.remove("hide");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.classList.add("hide"); }, 3200);
+}
+
+/* ══ PAGE NAV ══ */
+function showPage(id) {
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active","page-enter"));
+  const t = document.getElementById(id);
+  t.classList.add("active");
+  requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add("page-enter")));
+  window.scrollTo(0,0);
+}
+function goHome()    { updateHomeStats(); showPage("pageHome"); }
+function goHistory() { loadHistory(); showPage("pageHistory"); }
+function goSetup()   { buildSetupInputs(); showPage("pageSetup"); }
+
+/* ══ HISTORY PAGE ══ */
+async function loadHistory() {
+  const grid = document.getElementById("sessionsGrid");
+  grid.innerHTML = "<div class='no-sessions'>⏳ Loading...</div>";
+  try {
+    const sessions = await dbGetAllSessions();
+    if (!sessions.length) { grid.innerHTML = "<div class='no-sessions'>📭 Koi saved sessions nahi hain abhi tak.<br>Voting shuru karein!</div>"; return; }
+    grid.innerHTML = sessions.map(s => {
+      const winner = getWinner(s.votes);
+      return `
+        <div class="session-card" onclick="viewSession('${s.id}')">
+          <div class="session-card-top">
+            <div class="session-id">${s.id}</div>
+            <button class="btn-danger" onclick="deleteSession('${s.id}',event)" style="font-size:.6rem;padding:4px 8px;">🗑️</button>
+          </div>
+          <div class="session-date">📅 ${s.date}</div>
+          <div class="session-voters" style="margin-top:8px">👥 ${s.voters.length} voters registered</div>
+          <div style="font-size:.66rem;color:var(--muted);margin-top:3px">${s.voters.slice(0,3).join(", ")}${s.voters.length>3?` +${s.voters.length-3} more`:""}</div>
+          ${winner ? `<div class="session-winner" style="margin-top:8px">🏆 Winner: ${winner}</div>` : ""}
+          <div class="session-total" style="margin-top:3px">Total votes: ${s.totalVotes}</div>
+          <div class="session-status ${s.status==="complete"?"status-done":"status-act"}">
+            ${s.status==="complete"?"✓ Complete":"● Active"}
+          </div>
+        </div>`;
+    }).join("");
+  } catch(err) {
+    grid.innerHTML = `<div class='no-sessions'>⚠️ Error loading: ${err}</div>`;
+  }
+}
+
+async function deleteSession(id, e) {
+  e.stopPropagation();
+  if (!confirm("Is session ko delete karein?")) return;
+  try {
+    await dbDeleteSession(id);
+    showToast("🗑️ Session deleted");
+    loadHistory();
+    updateHomeStats();
+  } catch(err) { showToast("⚠️ Delete failed: "+err, "#ff1744"); }
+}
+
+async function clearAllSessions() {
+  if (!confirm("Saari sessions delete karein? Ye undo nahi ho sakta!")) return;
+  try {
+    await dbClearAll();
+    showToast("🗑️ All sessions cleared");
+    loadHistory();
+    updateHomeStats();
+  } catch(err) { showToast("⚠️ Clear failed: "+err, "#ff1744"); }
+}
+
+async function viewSession(id) {
+  try {
+    const sessions = await dbGetAllSessions();
+    const s = sessions.find(x => x.id === id);
+    if (!s) return;
+    document.getElementById("modalSub").textContent = `${s.id} · ${s.date}`;
+    document.getElementById("modalVoters").innerHTML = s.voters.map(v=>`<span class="tag">${v}</span>`).join("");
+    const maxV = Math.max(...s.votes, 1);
+    document.getElementById("modalResults").innerHTML = CANDS.map((c,i)=>`
+      <div class="res-row">
+        <div class="res-name" style="min-width:80px">${c.sym} ${c.nameEn.split(" ")[0]}</div>
+        <div class="res-bar-wrap"><div class="res-bar" style="width:${Math.round(s.votes[i]/maxV*100)}%"></div></div>
+        <div class="res-count">${s.votes[i]}</div>
+      </div>`).join("") +
+      `<div class="res-row" style="margin-top:6px">
+        <div class="res-name" style="color:var(--gold2)">Total</div><div></div>
+        <div class="res-count" style="color:var(--gold2)">${s.totalVotes}</div>
+      </div>`;
+    const w = getWinner(s.votes);
+    document.getElementById("modalWinner").textContent = w ? "🏆 Winner: "+w : "";
+    document.getElementById("modalBg").style.display = "flex";
+  } catch {}
+}
+function closeModal() { document.getElementById("modalBg").style.display = "none"; }
+
+/* ══ SETUP PAGE ══ */
+function buildSetupInputs() {
+  const list = document.getElementById("voterInputList");
+  if (list.children.length === MAX_VOTERS) return;
+  list.innerHTML = "";
+  for (let i = 0; i < MAX_VOTERS; i++) {
+    list.innerHTML += `
+      <div class="voter-row">
+        <span class="voter-num-lbl">${String(i+1).padStart(2,"0")}.</span>
+        <input class="voter-inp" id="vi${i}" type="text" maxlength="40"
+          placeholder="Voter ${i+1} ka naam / नाम लिखें"
+          oninput="onVoterInput()"
+          onkeydown="if(event.key==='Enter'){const n=document.getElementById('vi${i+1}');if(n)n.focus();}"/>
+        <div class="vdot" id="vd${i}"></div>
+      </div>`;
+  }
+}
+
+function onVoterInput() {
+  let count = 0;
+  for (let i = 0; i < MAX_VOTERS; i++) {
+    const v = (document.getElementById(`vi${i}`)?.value||"").trim();
+    const dot = document.getElementById(`vd${i}`), inp = document.getElementById(`vi${i}`);
+    if (v) { count++; dot.classList.add("filled"); inp.classList.add("filled"); }
+    else   { dot.classList.remove("filled"); inp.classList.remove("filled"); }
+  }
+  document.getElementById("regCount").textContent = `${count} / ${MAX_VOTERS}`;
+  document.getElementById("btnStart").disabled = (count < 1);
+  document.getElementById("setupErr").textContent = "";
+}
+
+async function startVoting() {
+  const names = [];
+  const seen = new Set();
+  for (let i = 0; i < MAX_VOTERS; i++) {
+    const v = (document.getElementById(`vi${i}`)?.value||"").trim();
+    if (!v) continue;
+    if (seen.has(v.toLowerCase())) {
+      document.getElementById("setupErr").textContent = `⚠️ Duplicate name: "${v}"`;
+      document.getElementById(`vi${i}`).focus(); return;
+    }
+    seen.add(v.toLowerCase());
+    names.push(v);
+  }
+  if (!names.length) { document.getElementById("setupErr").textContent = "⚠️ Kam se kam 1 voter ka naam likhein."; return; }
+
+  // Create new session in DB
+  activeSessionId = `EVM-${Date.now()}`;
+  const session = {
+    id: activeSessionId,
+    timestamp: Date.now(),
+    date: new Date().toLocaleString("hi-IN"),
+    voters: names,
+    votes: new Array(CANDS.length).fill(0),
+    totalVotes: 0,
+    currentIdx: 0,
+    status: "active",
+    winner: null,
+  };
+
+  try {
+    await dbSaveSession(session);
+    showToast(`💾 New session created — ID: ${activeSessionId}`);
+    updateHomeStats();
+  } catch(err) { showToast("⚠️ DB save failed: "+err, "#ff9100"); }
+
+  // Init voting state
+  voters = names;
+  votes = new Array(CANDS.length).fill(0);
+  totalVotes = 0; currentIdx = 0; vState = "open"; hasVoted = false;
+
+  showPage("pageVoting");
+  renderQueueChips();
+  renderCandidates();
+  setCurrentVoter();
+  updateDisplay(`READY\n${names[0].substring(0,14).toUpperCase()}\nVOTE:0/${names.length}`);
+  setLed("green","System Ready");
+}
+
+/* ══ QUEUE ══ */
+function renderQueueChips() {
+  document.getElementById("queueGrid").innerHTML =
+    voters.map((n,i) => `<div class="chip chip-wait" id="chip${i}">${i+1}. ${n}</div>`).join("");
+  updateChips();
+}
+function updateChips() {
+  voters.forEach((_,i) => {
+    const c = document.getElementById(`chip${i}`);
+    if (!c) return;
+    c.className = "chip " + (i < currentIdx ? "chip-done" : i===currentIdx && vState==="open" ? "chip-cur" : "chip-wait");
+  });
+}
+
+/* ══ CANDIDATES ══ */
+function renderCandidates() {
+  document.getElementById("candList").innerHTML = CANDS.map((c,i) => `
+    <div class="cand-row${i===CANDS.length-1?" nota":""}" id="row${i}">
+      <div class="s-no">${String(i+1).padStart(2,"0")}</div>
+      <div class="sym-box">${c.sym}</div>
+      <div class="cand-info">
+        <div class="cand-name">${c.name}</div>
+        <div class="cand-party">${c.party}</div>
+      </div>
+      <button class="vote-btn" id="vbtn${i}" onclick="castVote(${i})" disabled>
+        <div class="vbdot"></div><div>VOTE</div>
+      </button>
+    </div>`).join("");
+}
+
+function setCurrentVoter() {
+  if (currentIdx >= voters.length) return;
+  document.getElementById("cvName").textContent = voters[currentIdx];
+  document.getElementById("cvNum").textContent  = `Voter ${currentIdx+1} of ${voters.length}`;
+  CANDS.forEach((_,i) => { document.getElementById(`vbtn${i}`).disabled = false; });
+  hasVoted = false;
+  updateChips();
+}
+
+/* ══ CAST VOTE ══ */
+async function castVote(idx) {
+  if (vState!=="open" || hasVoted || currentIdx>=voters.length) return;
+
+  // Disable buttons immediately
+  CANDS.forEach((_,i) => { document.getElementById(`vbtn${i}`).disabled = true; });
+  document.getElementById(`row${idx}`).classList.add("voted");
+
+  votes[idx]++;
+  totalVotes++;
+  hasVoted = true;
+
+  const voterName = voters[currentIdx];
+  updateDisplay(`VOTE RECORDED\n${voterName.substring(0,14).toUpperCase()}\nTOTAL:${totalVotes}`);
+  setLed("green","Vote Recorded ✓");
+
+  // Show overlay
+  document.getElementById("ovVoter").textContent = voterName;
+  document.getElementById("ovCand").textContent  = `${CANDS[idx].name} — ${CANDS[idx].party}`;
+  document.getElementById("votedOverlay").classList.add("show");
+  beepSuccess();
+
+  // ── SAVE TO DATABASE ──
+  const nextIdx = currentIdx + 1;
+  const isComplete = nextIdx >= voters.length;
+  const sessionData = {
+    id: activeSessionId,
+    timestamp: Date.now(),
+    date: new Date().toLocaleString("hi-IN"),
+    voters: voters,
+    votes: [...votes],
+    totalVotes: totalVotes,
+    currentIdx: nextIdx,
+    status: isComplete ? "complete" : "active",
+    winner: isComplete ? getWinner(votes) : null,
+  };
+
+  try {
+    await dbSaveSession(sessionData);
+    showToast(`💾 Vote saved — ${voterName} → ${CANDS[idx].nameEn.split(" ")[0]}`);
+    updateHomeStats();
+  } catch(err) { showToast("⚠️ Save failed: "+err, "#ff9100"); }
+
+  setTimeout(() => {
+    document.getElementById("votedOverlay").classList.remove("show");
+    CANDS.forEach((_,i) => { document.getElementById(`row${i}`).classList.remove("voted"); });
+    currentIdx = nextIdx;
+    updateChips();
+    if (currentIdx >= voters.length) { allDone(); }
+    else {
+      setCurrentVoter();
+      updateDisplay(`NEXT VOTER\n${voters[currentIdx].substring(0,14).toUpperCase()}\nVOTE:${totalVotes}/${voters.length}`);
+      setLed("green","Next Voter");
+    }
+  }, 2500);
+}
+
+function allDone() {
+  vState = "closed";
+  CANDS.forEach((_,i) => { document.getElementById(`vbtn${i}`).disabled = true; });
+  document.getElementById("cvName").textContent = "— समाप्त —";
+  document.getElementById("cvNum").textContent  = "All voters have voted";
+  document.getElementById("cvBox").style.borderColor = "var(--gold2)";
+  updateDisplay(`VOTING COMPLETE\nALL ${voters.length} VOTED\nPRESS RESULT`);
+  setLed("orange","Voting Complete");
+  updateChips();
+  showToast("✅ Voting complete — all data saved to database!", "#00e676");
+}
+
+/* ══ CU CONTROLS ══ */
+function doShowResult() {
+  const panel = document.getElementById("resultPanel");
+  const maxV = Math.max(...votes,1);
+  document.getElementById("resultRows").innerHTML =
+    CANDS.map((c,i)=>`
+      <div class="res-row">
+        <div class="res-name">${c.sym} ${c.nameEn.split(" ")[0]}</div>
+        <div class="res-bar-wrap"><div class="res-bar" style="width:${Math.round(votes[i]/maxV*100)}%"></div></div>
+        <div class="res-count">${votes[i]}</div>
+      </div>`).join("") +
+    `<div class="res-row" style="margin-top:4px">
+      <div class="res-name" style="color:var(--gold2)">Total</div><div></div>
+      <div class="res-count" style="color:var(--gold2)">${totalVotes}</div>
+    </div>`;
+  panel.classList.add("show");
+  updateDisplay(`RESULT DISPLAY\nACTIVE\nTOTAL:${totalVotes}`);
+  setLed("orange","Showing Result");
+}
+
+function doCloseVoting() {
+  vState = "closed";
+  CANDS.forEach((_,i) => { document.getElementById(`vbtn${i}`).disabled = true; });
+  updateDisplay(`VOTING CLOSED\nTOTAL:${totalVotes}\nOF ${voters.length}`);
+  setLed("red","Voting Closed");
+}
+
+function doReset() {
+  if (!confirm("New session shuru karein? Current session already saved hai.")) return;
+  // Clear setup inputs
+  for (let i=0;i<MAX_VOTERS;i++) {
+    const inp=document.getElementById(`vi${i}`);
+    if(inp){inp.value="";inp.classList.remove("filled");}
+    const dot=document.getElementById(`vd${i}`);
+    if(dot) dot.classList.remove("filled");
+  }
+  document.getElementById("regCount").textContent = "0 / 10";
+  document.getElementById("btnStart").disabled = true;
+  document.getElementById("setupErr").textContent = "";
+  document.getElementById("resultPanel").classList.remove("show");
+  goSetup();
+}
+
+/* ══ HELPERS ══ */
+function getWinner(v) {
+  const max = Math.max(...v);
+  if (max===0) return null;
+  const wi = v.indexOf(max);
+  return CANDS[wi].nameEn;
+}
+
+function updateDisplay(text) {
+  document.getElementById("displayTxt").innerHTML =
+    text.split("\n").join("<br>") + '<span class="blink-cur">_</span>';
+}
+
+function setLed(color, label) {
+  document.getElementById("ledDot").className = `led ${color}`;
+  document.getElementById("ledLbl").textContent = label;
+}
+
+function beepSuccess() {
+  try {
+    const ctx = new(window.AudioContext||window.webkitAudioContext)();
+    [880,1100].forEach((f,i)=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);o.frequency.value=f;o.type="sine";
+      g.gain.setValueAtTime(.28,ctx.currentTime+i*.12);
+      g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+i*.12+.2);
+      o.start(ctx.currentTime+i*.12);o.stop(ctx.currentTime+i*.12+.22);
+    });
+  }catch{}
+}
+
+/* ══ BOOT ══ */
+buildSetupInputs();
+initDB();
+</script>
+</body>
+</html>
